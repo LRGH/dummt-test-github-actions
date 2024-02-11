@@ -57,6 +57,8 @@ jobs:
       matrix:
         os: ["ubuntu-20.04"]
         gcc-version: ["7", "8", "9", "10", "11"]
+    env:
+      CC: gcc
     steps:
     - uses: actions/checkout@v3
     - name: Set up GCC ${{ matrix.gcc-version }}
@@ -66,13 +68,20 @@ jobs:
         platform: x64
     - name: Test gcc version
       run: |
-        gcc --version
+        $CC --version
+    - name: Compile simple program
+      run: |
+        echo 'int main() { return 0; }' > a.c
+        $CC -o a.out a.c
+        ./a.out
 
   gcc-6:
     runs-on: "ubuntu-20.04"
     # does not work on ubuntu-22.04 :-(
     strategy:
       fail-fast: false
+    env:
+      CC: gcc-6
     steps:
     - uses: actions/checkout@v3
     - name: Set up GCC 6
@@ -82,13 +91,19 @@ jobs:
         sudo apt install g++-6
     - name: Test gcc version
       run: |
-        gcc --version
-        gcc-6 --version
+        $CC --version
+    - name: Compile simple program
+      run: |
+        echo 'int main() { return 0; }' > a.c
+        $CC -o a.out a.c
+        ./a.out
 
   gcc-5:
     runs-on: "ubuntu-20.04"
     strategy:
       fail-fast: false
+    env:
+      CC: gcc-5
     steps:
     - uses: actions/checkout@v3
     - name: Set up GCC 5
@@ -98,13 +113,19 @@ jobs:
         sudo apt install g++-5
     - name: Test gcc version
       run: |
-        gcc --version
-        gcc-5 --version
+        $CC --version
+    - name: Compile simple program
+      run: |
+        echo 'int main() { return 0; }' > a.c
+        $CC -o a.out a.c
+        ./a.out
 
   gcc-4-8:
     runs-on: "ubuntu-20.04"
     strategy:
       fail-fast: false
+    env:
+      CC: gcc-4.8
     steps:
     - uses: actions/checkout@v3
     - name: Download GCC 4.8
@@ -122,6 +143,9 @@ jobs:
         sudo apt install ./gcc-4.8_4.8.5-4ubuntu8_amd64.deb ./gcc-4.8-base_4.8.5-4ubuntu8_amd64.deb ./libstdc++-4.8-dev_4.8.5-4ubuntu8_amd64.deb ./cpp-4.8_4.8.5-4ubuntu8_amd64.deb ./libgcc-4.8-dev_4.8.5-4ubuntu8_amd64.deb ./libasan0_4.8.5-4ubuntu8_amd64.deb ./g++-4.8_4.8.5-4ubuntu8_amd64.deb
     - name: Test gcc version
       run: |
-        gcc --version
-        gcc-4 --version || echo gcc-4 failed
-        gcc-4.8 --version || echo gcc-4.8 failed
+        $CC --version
+    - name: Compile simple program
+      run: |
+        echo 'int main() { return 0; }' > a.c
+        $CC -o a.out a.c
+        ./a.out
