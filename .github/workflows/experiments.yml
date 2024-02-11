@@ -57,6 +57,7 @@ jobs:
       matrix:
         os: ["ubuntu-20.04"]
         gcc-version: ["7", "8", "9", "10", "11"]
+        platform: ["x64", "x86"]
     env:
       CC: gcc
     steps:
@@ -65,14 +66,16 @@ jobs:
       uses: egor-tensin/setup-gcc@v1
       with:
         version: ${{ matrix.gcc-version }}
-        platform: x64
+        platform: ${{ matrix.platform }}
     - name: Test gcc version
       run: |
         $CC --version
     - name: Compile simple program
       run: |
+        case "${{ matrix.platform }}" in x86) CPU=-m32 ;; *) CPU= ;; esac
         echo 'int main() { return 0; }' > a.c
-        $CC -o a.out a.c
+        $CC $CPU -o a.out a.c
+        file a.out
         ./a.out
 
   gcc-6:
