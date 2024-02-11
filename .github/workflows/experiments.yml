@@ -1,0 +1,86 @@
+name: Various experiments
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  os-python:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-20.04", "ubuntu-latest", "macos-latest"]
+        python-version: ["3.10", "pypy2.7", "pypy3.9"]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Test python version
+      run: |
+        python -c 'import sys;print(sys.version)'
+        python --version
+    - name: Test dependencies
+      run: |
+        python -m pip install pytest pyparsing coverage codecov
+
+  python23:
+    runs-on: "ubuntu-latest"
+    strategy:
+      fail-fast: false
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 2.3
+      run: |
+        CWD=$(pwd)
+        cd ..
+        curl -O https://www.python.org/ftp/python/2.3.7/Python-2.3.7.tgz
+        tar xzf Python-2.3.7.tgz
+        cd Python-2.3.7
+        # We need to disable FORTIFY_SOURCE to compile python 2.3
+        # cf. https://bugs.launchpad.net/ubuntu/+source/gcc-defaults/+bug/286334
+        ./configure BASECFLAGS=-U_FORTIFY_SOURCE
+        make
+        export PATH=$(pwd):$PATH
+        cd $CWD
+    - name: Test python version
+      run: |
+        python -c 'import sys;print(sys.version)'
+        python --version
+
+  gcc-compilers:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-20.04"]
+        gcc-version: ["7", "8", "9", "10", "11"]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up GCC ${{ matrix.gcc-version }}
+      uses: egor-tensin/setup-gcc@v1
+      with:
+        version: ${{ matrix.gcc-version }}
+        platform: x64
+    - name: Test gcc version
+      run: |
+        gcc --version
+
+  gcc-6:
+    runs-on: "ubuntu-20.04"
+    # does not work on ubuntu-22.04 :-(
+    strategy:
+      fail-fast: false
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up GCC 6
+      run: |
+        echo "deb http://dk.archive.ubuntu.com/ubuntu/ bionic main universe" | sudo tee -a /etc/apt/sources.list
+        sudo apt update
+        sudo apt install g++-6
+    - name: Test gcc version
+      run: |
+        gcc --version
+        gcc-6 --version
