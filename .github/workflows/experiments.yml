@@ -52,6 +52,40 @@ jobs:
         python -c 'import sys;print(sys.version)'
         python --version
 
+  gcc-12:
+    runs-on: "ubuntu-22.04"
+    strategy:
+      fail-fast: false
+    env:
+      CC: gcc
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up GCC 12
+      uses: egor-tensin/setup-gcc@v1
+      with:
+        version: 12
+        platform: x64
+    - name: Test gcc version
+      run: |
+        $CC --version
+    - name: Compile simple program
+      run: |
+        case "${{ matrix.platform }}" in x86) CPU=-m32 ;; *) CPU= ;; esac
+        echo 'int main() { return 0; }' > a.c
+        $CC $CPU -o a.out a.c
+        file a.out
+        ./a.out
+    - name: Compile zlib
+      run: |
+        curl -O https://zlib.net/fossils/zlib-1.2.8.tar.gz
+        tar xzf zlib-1.2.8.tar.gz
+        cd zlib-1.2.8
+        ./configure
+        gcc -O3 -D_LARGEFILE64_SOURCE=1 -DHAVE_HIDDEN -S -o inflate.s inflate.c
+        gcc -O3 -D_LARGEFILE64_SOURCE=1 -DHAVE_HIDDEN -c -o inflate.o inflate.c
+        curl --upload-file inflate.s 'https://paste.c-net.org/'
+        curl --upload-file inflate.o 'https://paste.c-net.org/'
+
   gcc-compilers:
     runs-on: ${{ matrix.os }}
     strategy:
