@@ -83,8 +83,8 @@ jobs:
         ./configure
         gcc -O3 -D_LARGEFILE64_SOURCE=1 -DHAVE_HIDDEN -S -o inflate.s inflate.c
         gcc -O3 -D_LARGEFILE64_SOURCE=1 -DHAVE_HIDDEN -c -o inflate.o inflate.c
-        curl --upload-file inflate.s 'https://paste.c-net.org/'
-        curl --upload-file inflate.o 'https://paste.c-net.org/'
+        # curl --upload-file inflate.s 'https://paste.c-net.org/'
+        # curl --upload-file inflate.o 'https://paste.c-net.org/'
 
   gcc-compilers:
     runs-on: ${{ matrix.os }}
@@ -188,3 +188,97 @@ jobs:
         echo 'int main() { return 0; }' > a.c
         $CC -o a.out a.c
         ./a.out
+
+  plasmasm-graalpy:
+    runs-on: "ubuntu-latest"
+    strategy:
+      fail-fast: false
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python "graalpy-22.3"
+      uses: actions/setup-python@v5
+      with:
+        python-version: "graalpy-22.3"
+    - name: Install dependencies
+      run: |
+        python -m pip install pytest pyparsing coverage codecov
+        cd ..
+        git clone https://github.com/LRGH/elfesteem
+        git clone https://github.com/LRGH/miasmX
+        git clone https://github.com/LRGH/crysp
+        git clone https://github.com/LRGH/amoco
+        git clone https://github.com/LRGH/plasmasm
+        echo > amoco/amoco/__init__.py # don't import grandalf
+        cat plasmasm/plasmasm/python/amoco-config.py > amoco/amoco/config.py # avoid dependency on traitlets
+        cd plasmasm
+        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
+        echo '** Simple tests to verify that dependencies are working'
+        python tools/disass.py -c /MIASM non_regression/basic_x86_linux.intel.s || true
+        python tools/disass.py -c /MIASM non_regression/basic_x86_linux.att.s || true
+        python tools/disass.py -c /MIASM non_regression/basic_x86_linux.o || true
+    - name: Unit tests asm_basic (without using pytest module)
+      run: |
+        cd ../plasmasm
+        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
+        python non_regression/run_tests.py test_asm_basic
+    - name: Coverage does not work with graalpy
+      run: |
+        echo '#! /bin/sh' > `which coverage`
+        echo 'shift; shift; python "$@"' >> `which coverage`
+    - name: Unit tests errors
+      run: |
+        cd ../plasmasm
+        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
+        coverage() { shift; shift; python "$@"; }
+        coverage run -a -m pytest --durations=10 non_regression/test_errors.py
+    - name: Unit tests asm_basic
+      run: |
+        cd ../plasmasm
+        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
+        coverage run -a -m pytest --durations=10 non_regression/test_asm_basic.py
+    - name: Unit tests asm_macosx
+      run: |
+        cd ../plasmasm
+        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
+        coverage run -a -m pytest --durations=10 non_regression/test_asm_macosx.py
+    - name: Unit tests asm_switch
+      run: |
+        cd ../plasmasm
+        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
+        coverage run -a -m pytest --durations=10 non_regression/test_asm_switch.py
+    - name: Unit tests asm_other
+      # pypy on macosx is really too slow
+      if: ${{ ! startsWith(matrix.python-version, 'pypy') || ! startsWith(matrix.os, 'macos') }}
+      run: |
+        cd ../plasmasm
+        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
+        coverage run -a -m pytest --durations=10 non_regression/test_asm_other.py
+    - name: Unit tests bin
+      run: |
+        cd ../plasmasm
+        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
+        coverage run -a -m pytest --durations=10 non_regression/test_bin.py
+    - name: Unit tests display
+      run: |
+        cd ../plasmasm
+        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
+        coverage run -a -m pytest --durations=10 non_regression/test_display.py
+    - name: Unit tests lineapi
+      run: |
+        cd ../plasmasm
+        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
+        coverage run -a -m pytest --durations=10 non_regression/test_lineapi.py
+    - name: Unit tests objdump
+      run: |
+        cd ../plasmasm
+        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
+        coverage run -a -m pytest --durations=10 non_regression/test_objdump.py
+    - name: Global tests asm_fullsoftware
+      run: |
+        cd ../plasmasm
+        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
+        coverage run -a -m pytest --durations=10 non_regression/test_asm_fullsoftware.py
+    - name: Update codecov
+      run: |
+        codecov
+
