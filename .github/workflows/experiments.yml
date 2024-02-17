@@ -159,6 +159,46 @@ jobs:
         $CC -o a.out a.c
         ./a.out
 
+  gcc-4-6:
+    runs-on: "ubuntu-20.04"
+    strategy:
+      fail-fast: false
+    env:
+      CC: gcc-4.6
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download GCC 4.6
+      run: |
+        sudo apt-get update
+        mkdir install_g++-4.6
+        cd install_g++-4.6/
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-4.6/g++-4.6_4.6.4-6ubuntu2_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-4.6/libstdc++6-4.6-dev_4.6.4-6ubuntu2_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-4.6/gcc-4.6-base_4.6.4-6ubuntu2_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-4.6/gcc-4.6_4.6.4-6ubuntu2_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-4.6/cpp-4.6_4.6.4-6ubuntu2_amd64.deb
+        wget https://mirrors.edge.kernel.org/ubuntu/pool/main/m/mpfr4/libmpfr4_3.1.2-1_amd64.deb
+        wget https://mirrors.edge.kernel.org/ubuntu/pool/main/g/glibc/multiarch-support_2.27-3ubuntu1.6_amd64.deb
+        sudo apt-get install ./g++-4.6_4.6.4-6ubuntu2_amd64.deb ./libstdc++6-4.6-dev_4.6.4-6ubuntu2_amd64.deb ./gcc-4.6-base_4.6.4-6ubuntu2_amd64.deb ./gcc-4.6_4.6.4-6ubuntu2_amd64.deb ./cpp-4.6_4.6.4-6ubuntu2_amd64.deb ./libmpfr4_3.1.2-1_amd64.deb ./multiarch-support_2.27-3ubuntu1.6_amd64.deb
+    - name: Test gcc version
+      run: |
+        $CC --version
+    - name: Compile simple program
+      run: |
+        echo 'int main() { return 0; }' > a.c
+        $CC -o a.out a.c
+        ./a.out
+    - name: Compile simple C++ program
+      run: |
+        echo 'int main() { return 0; }' > a.cpp
+        g++-4.6 -o a.out a.cpp
+        ./a.out
+    - name: Compile complex C++ program
+      run: |
+        git clone https://github.com/LRGH/setup-gcc
+        g++-4.6 -std=c++0x -o a.out setup-gcc/foo.cpp
+        ./a.out
+
   gcc-4-8:
     runs-on: "ubuntu-20.04"
     strategy:
@@ -188,97 +228,3 @@ jobs:
         echo 'int main() { return 0; }' > a.c
         $CC -o a.out a.c
         ./a.out
-
-  plasmasm-graalpy:
-    runs-on: "ubuntu-latest"
-    strategy:
-      fail-fast: false
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python "graalpy-22.3"
-      uses: actions/setup-python@v5
-      with:
-        python-version: "graalpy-22.3"
-    - name: Install dependencies
-      run: |
-        python -m pip install pytest pyparsing coverage codecov
-        cd ..
-        git clone https://github.com/LRGH/elfesteem
-        git clone https://github.com/LRGH/miasmX
-        git clone https://github.com/LRGH/crysp
-        git clone https://github.com/LRGH/amoco
-        git clone https://github.com/LRGH/plasmasm
-        echo > amoco/amoco/__init__.py # don't import grandalf
-        cat plasmasm/plasmasm/python/amoco-config.py > amoco/amoco/config.py # avoid dependency on traitlets
-        cd plasmasm
-        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
-        echo '** Simple tests to verify that dependencies are working'
-        python tools/disass.py -c /MIASM non_regression/basic_x86_linux.intel.s || true
-        python tools/disass.py -c /MIASM non_regression/basic_x86_linux.att.s || true
-        python tools/disass.py -c /MIASM non_regression/basic_x86_linux.o || true
-    - name: Unit tests asm_basic (without using pytest module)
-      run: |
-        cd ../plasmasm
-        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
-        python non_regression/run_tests.py test_asm_basic
-    - name: Coverage does not work with graalpy
-      run: |
-        echo '#! /bin/sh' > `which coverage`
-        echo 'shift; shift; python "$@"' >> `which coverage`
-    - name: Unit tests errors
-      run: |
-        cd ../plasmasm
-        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
-        coverage() { shift; shift; python "$@"; }
-        coverage run -a -m pytest --durations=10 non_regression/test_errors.py
-    - name: Unit tests asm_basic
-      run: |
-        cd ../plasmasm
-        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
-        coverage run -a -m pytest --durations=10 non_regression/test_asm_basic.py
-    - name: Unit tests asm_macosx
-      run: |
-        cd ../plasmasm
-        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
-        coverage run -a -m pytest --durations=10 non_regression/test_asm_macosx.py
-    - name: Unit tests asm_switch
-      run: |
-        cd ../plasmasm
-        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
-        coverage run -a -m pytest --durations=10 non_regression/test_asm_switch.py
-    - name: Unit tests asm_other
-      # pypy on macosx is really too slow
-      if: ${{ ! startsWith(matrix.python-version, 'pypy') || ! startsWith(matrix.os, 'macos') }}
-      run: |
-        cd ../plasmasm
-        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
-        coverage run -a -m pytest --durations=10 non_regression/test_asm_other.py
-    - name: Unit tests bin
-      run: |
-        cd ../plasmasm
-        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
-        coverage run -a -m pytest --durations=10 non_regression/test_bin.py
-    - name: Unit tests display
-      run: |
-        cd ../plasmasm
-        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
-        coverage run -a -m pytest --durations=10 non_regression/test_display.py
-    - name: Unit tests lineapi
-      run: |
-        cd ../plasmasm
-        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
-        coverage run -a -m pytest --durations=10 non_regression/test_lineapi.py
-    - name: Unit tests objdump
-      run: |
-        cd ../plasmasm
-        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
-        coverage run -a -m pytest --durations=10 non_regression/test_objdump.py
-    - name: Global tests asm_fullsoftware
-      run: |
-        cd ../plasmasm
-        export PYTHONPATH=../elfesteem:../miasmX:../amoco:../crysp
-        coverage run -a -m pytest --durations=10 non_regression/test_asm_fullsoftware.py
-    - name: Update codecov
-      run: |
-        codecov
-
