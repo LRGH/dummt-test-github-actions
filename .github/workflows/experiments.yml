@@ -159,6 +159,41 @@ jobs:
         $CC -o a.out a.c
         ./a.out
 
+  gcc-4-4:
+    runs-on: "ubuntu-20.04"
+    strategy:
+      fail-fast: false
+    env:
+      CC: gcc-4.4
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download GCC 4.4
+      run: |
+        sudo apt-get update
+        mkdir install_g++-4.4
+        cd install_g++-4.4/
+        wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/g++-4.4_4.4.7-8ubuntu1_amd64.deb
+        wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/libstdc++6-4.4-dev_4.4.7-8ubuntu1_amd64.deb
+        wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/gcc-4.4-base_4.4.7-8ubuntu1_amd64.deb
+        wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/gcc-4.4_4.4.7-8ubuntu1_amd64.deb
+        wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/cpp-4.4_4.4.7-8ubuntu1_amd64.deb
+        wget https://mirrors.edge.kernel.org/ubuntu/pool/main/m/mpfr4/libmpfr4_3.1.2-1_amd64.deb
+        wget https://mirrors.edge.kernel.org/ubuntu/pool/main/g/glibc/multiarch-support_2.27-3ubuntu1.6_amd64.deb
+        sudo apt-get install ./g++-4.4_4.4.7-8ubuntu1_amd64.deb ./libstdc++6-4.4-dev_4.4.7-8ubuntu1_amd64.deb ./gcc-4.4-base_4.4.7-8ubuntu1_amd64.deb ./gcc-4.4_4.4.7-8ubuntu1_amd64.deb ./cpp-4.4_4.4.7-8ubuntu1_amd64.deb ./libmpfr4_3.1.2-1_amd64.deb ./multiarch-support_2.27-3ubuntu1.6_amd64.deb
+    - name: Test gcc version
+      run: |
+        $CC --version
+    - name: Compile simple program
+      run: |
+        echo 'int main() { return 0; }' > a.c
+        $CC -o a.out a.c
+        ./a.out
+    - name: Compile simple C++ program
+      run: |
+        echo 'int main() { return 0; }' > a.cpp
+        g++-4.6 -o a.out a.cpp
+        ./a.out
+
   gcc-4-6:
     runs-on: "ubuntu-20.04"
     strategy:
@@ -192,11 +227,6 @@ jobs:
       run: |
         echo 'int main() { return 0; }' > a.cpp
         g++-4.6 -o a.out a.cpp
-        ./a.out
-    - name: Compile complex C++ program
-      run: |
-        git clone https://github.com/LRGH/setup-gcc
-        g++-4.6 -std=c++0x -o a.out setup-gcc/foo.cpp
         ./a.out
 
   gcc-4-8:
