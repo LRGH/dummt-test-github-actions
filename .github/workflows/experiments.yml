@@ -160,26 +160,20 @@ jobs:
         ./a.out
 
   gcc-4-4:
-    runs-on: "ubuntu-20.04"
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      matrix:
+        os: ["ubuntu-20.04", "ubuntu-22.04"]
     env:
       CC: gcc-4.4
     steps:
     - uses: actions/checkout@v4
-    - name: Download GCC 4.4
-      run: |
-        sudo apt-get update
-        mkdir install_g++-4.4
-        cd install_g++-4.4/
-        wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/g++-4.4_4.4.7-8ubuntu1_amd64.deb
-        wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/libstdc++6-4.4-dev_4.4.7-8ubuntu1_amd64.deb
-        wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/gcc-4.4-base_4.4.7-8ubuntu1_amd64.deb
-        wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/gcc-4.4_4.4.7-8ubuntu1_amd64.deb
-        wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/cpp-4.4_4.4.7-8ubuntu1_amd64.deb
-        wget https://mirrors.edge.kernel.org/ubuntu/pool/main/m/mpfr4/libmpfr4_3.1.2-1_amd64.deb
-        wget https://mirrors.edge.kernel.org/ubuntu/pool/main/g/glibc/multiarch-support_2.27-3ubuntu1.6_amd64.deb
-        sudo apt-get install ./g++-4.4_4.4.7-8ubuntu1_amd64.deb ./libstdc++6-4.4-dev_4.4.7-8ubuntu1_amd64.deb ./gcc-4.4-base_4.4.7-8ubuntu1_amd64.deb ./gcc-4.4_4.4.7-8ubuntu1_amd64.deb ./cpp-4.4_4.4.7-8ubuntu1_amd64.deb ./libmpfr4_3.1.2-1_amd64.deb ./multiarch-support_2.27-3ubuntu1.6_amd64.deb
+    - name: Set up GCC 4.4
+      uses: LRGH/setup-gcc@v2
+      with:
+        version: 4.4
+        platform: x64
     - name: Test gcc version
       run: |
         $CC --version
@@ -191,13 +185,30 @@ jobs:
     - name: Compile simple C++ program
       run: |
         echo 'int main() { return 0; }' > a.cpp
-        g++-4.6 -o a.out a.cpp
+        g++-4.4 -o a.out a.cpp
         ./a.out
+    - name: Compile zlib
+      run: |
+        curl -O https://zlib.net/fossils/zlib-1.2.8.tar.gz
+        tar xzf zlib-1.2.8.tar.gz
+        cd zlib-1.2.8
+        gcc --version
+        ./configure
+        echo =============================
+        make clean; make test CC='gcc' || true
+        echo =============================
+        gcc-4.4 --version
+        env CC='gcc-4.4' ./configure
+        make clean; make test CC='gcc-4.4' || true
+        echo =============================
+        make clean; make test CC=gcc-4.4 CFLAGS="-O3 -D_LARGEFILE64_SOURCE=1 -DHAVE_HIDDEN" SFLAGS="-fPIC -O3 -D_LARGEFILE64_SOURCE=1 -DHAVE_HIDDEN" || true
 
   gcc-4-6:
-    runs-on: "ubuntu-20.04"
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      matrix:
+        os: ["ubuntu-20.04", "ubuntu-22.04"]
     env:
       CC: gcc-4.6
     steps:
