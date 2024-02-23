@@ -103,6 +103,7 @@ jobs:
         # curl --upload-file minigzip.o 'https://paste.c-net.org/'
 
   gcc-m32:
+    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -121,11 +122,10 @@ jobs:
     - name: Add packages
       run: |
         sudo apt-get update
-        #mkdir install_gcc
-        #cd install_gcc
-        #wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.6/gcc-4.6-multilib_4.6.4-6ubuntu2_amd64.deb
-        #wget http://archive.ubuntu.com/ubuntu/pool/main/g/gcc-10/lib32gcc1_10.5.0-1ubuntu1~20.04_amd64.deb
-        #sudo apt-get install ./gcc-4.6-multilib_4.6.4-6ubuntu2_amd64.deb ./lib32gcc1_10.5.0-1ubuntu1~20.04_amd64.deb
+        mkdir install_gcc
+        cd install_gcc
+        wget wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/g++-4.4-multilib_4.4.7-8ubuntu1_amd64.deb
+        sudo apt-get install ./g++-4.4-multilib_4.4.7-8ubuntu1_amd64.deb
     - name: Test gcc version
       run: |
         gcc --version
@@ -278,3 +278,84 @@ jobs:
         $CC -m32 -o a.out a.c
         file a.out
         ./a.out
+
+  alpine:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: jirutka/setup-alpine@v1
+      with:
+        # branch: v3.15
+        arch: x86
+        packages: >
+          file
+          sudo
+          curl
+          tar
+          bzip2
+          m4
+          build-base
+          make
+    - run: cat /etc/alpine-release
+      shell: alpine.sh {0}
+    - name: Generic
+      run: |
+        uname -a
+        uname -m
+        file /usr/bin/dash
+    - name: Alpine
+      run: |
+        uname -a
+        uname -m
+        file /bin/busybox
+      shell: alpine.sh {0}
+    - name: simple C compilation
+      run: |
+        gcc --version
+        echo 'int main() { return 0; }' > a.c
+        gcc -o a.out a.c
+        file a.out
+        ./a.out
+      shell: alpine.sh {0}
+    - name: GMP 4.3.2
+      run: |
+        curl -O https://ftp.gwdg.de/pub/misc/gcc/infrastructure/gmp-4.3.2.tar.bz2
+        bzip2 -cd gmp-4.3.2.tar.bz2 | tar xf -
+        cd gmp-4.3.2
+        ./configure
+        make
+        sudo make install
+      shell: alpine.sh {0}
+    - name: MPFR 2.4.2
+      run: |
+        curl -O https://ftp.gwdg.de/pub/misc/gcc/infrastructure/mpfr-2.4.2.tar.bz2
+        bzip2 -cd mpfr-2.4.2.tar.bz2 | tar xf -
+        cd mpfr-2.4.2
+        ./configure
+        make
+        sudo make install
+      shell: alpine.sh {0}
+    - name: MPC 0.8.1
+      run: |
+        curl -O https://ftp.gwdg.de/pub/misc/gcc/infrastructure/mpc-0.8.1.tar.gz
+        tar xzf mpc-0.8.1.tar.gz
+        cd mpc-0.8.1
+        ./configure
+        make
+        sudo make install
+      shell: alpine.sh {0}
+    - name: GCC 4.9.2
+      run: |
+        curl -O https://ftp.gnu.org/gnu/gcc/gcc-4.9.2/gcc-4.9.2.tar.gz
+        tar xzf gcc-4.9.2.tar.gz
+        cd gcc-4.9.2
+        ./configure
+        make
+      shell: alpine.sh {0}
+    - name: GCC 3.2.3
+      run: |
+        curl -O https://ftp.gnu.org/gnu/gcc/gcc-3.2.3.tar.gz
+        tar xzf gcc-3.2.3.tar.gz
+        cd gcc-3.2.3
+        ./configure
+        make
+      shell: alpine.sh {0}
