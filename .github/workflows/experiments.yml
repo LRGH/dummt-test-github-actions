@@ -103,67 +103,58 @@ jobs:
         # curl --upload-file minigzip.o 'https://paste.c-net.org/'
 
   gcc-m32:
-    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-20.04", "ubuntu-22.04"]
-        gcc-version: ["4.4"] # , "4.6", "4.8"]
+        os: [ubuntu-20.04, ubuntu-22.04]
+        gcc-version: [4.4, 4.6, 4.8, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        platform: [x86]
         exclude:
-          - {os: ubuntu-22.04}
+          - {os: ubuntu-22.04, gcc-version: 4.4}
+          - {os: ubuntu-22.04, gcc-version: 4.6}
+          - {os: ubuntu-22.04, gcc-version: 4.8, platform: x86}
+          - {os: ubuntu-20.04, gcc-version: 4.8}
+          - {os: ubuntu-20.04, gcc-version: 5}
+          - {os: ubuntu-22.04, gcc-version: 5, platform: x86}
+          - {os: ubuntu-20.04, gcc-version: 6}
+          - {os: ubuntu-22.04, gcc-version: 6, platform: x86}
+          - {os: ubuntu-20.04, gcc-version: 7}
+          - {os: ubuntu-22.04, gcc-version: 8}
+          - {os: ubuntu-20.04, gcc-version: 9}
+          - {os: ubuntu-20.04, gcc-version: 10}
+          - {os: ubuntu-20.04, gcc-version: 11}
+          - {os: ubuntu-20.04, gcc-version: 12}
+          - {os: ubuntu-20.04, gcc-version: 13}
     steps:
     - uses: actions/checkout@v4
     - name: Set up GCC ${{ matrix.gcc-version }}
-      uses: LRGH/setup-gcc@master
+      uses: LRGH/setup-gcc@v3
       with:
         version: ${{ matrix.gcc-version }}
         platform: ${{ matrix.platform }}
-    - name: Add packages
-      run: |
-        sudo apt-get update
-        mkdir install_gcc
-        cd install_gcc
-        wget wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/g++-4.4-multilib_4.4.7-8ubuntu1_amd64.deb
-        sudo apt-get install ./g++-4.4-multilib_4.4.7-8ubuntu1_amd64.deb
     - name: Test gcc version
       run: |
         gcc --version
-    - name: Compile simple program
-      run: |
-        echo 'int main() { return 0; }' > a.c
-        gcc -o a.out a.c
-        file a.out
-        ./a.out
-    - name: Compile simple C++ program
-      run: |
-        echo 'int main() { return 0; }' > a.cpp
-        g++ -o a.out a.cpp
-        file a.out
-        ./a.out
     - name: Compile simple 32-bit program
       run: |
         echo 'int main() { return 0; }' > a.c
         gcc -m32 -o a.out a.c
         file a.out
         ./a.out
-    - name: Compile simple 32-bit C++ program
+    - name: Using #include <errno.h>
       run: |
-        echo 'int main() { return 0; }' > a.cpp
-        g++ -m32 -o a.out a.cpp
+        echo '#include <errno.h>' > a.c
+        echo 'int main() { return 0; }' >> a.c
+        gcc -m32 -o a.out a.c
         file a.out
         ./a.out
-    - name: Compile zlib
+    - name: Compile zlib, 32-bits
       run: |
         curl -O https://zlib.net/fossils/zlib-1.2.8.tar.gz
         tar xzf zlib-1.2.8.tar.gz
         cd zlib-1.2.8
         ./configure
-        make clean; make test
-        file minigzip
-    - name: Compile zlib, 32-bits
-      run: |
-        cd zlib-1.2.8
         flags="-m32 -O3 -D_LARGEFILE64_SOURCE=1 -DHAVE_HIDDEN"
         make clean; make test CFLAGS="$flags" SFLAGS="-fPIC $flags"
         file minigzip
@@ -280,6 +271,7 @@ jobs:
         ./a.out
 
   alpine:
+    if: false
     runs-on: ubuntu-latest
     steps:
     - uses: jirutka/setup-alpine@v1
