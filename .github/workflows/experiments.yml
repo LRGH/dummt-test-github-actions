@@ -5,6 +5,150 @@ on:
   pull_request:
 
 jobs:
+
+  gcc-8:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-20.04", "ubuntu-22.04"]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download GCC 8
+      run: |
+        sudo apt-get update
+        mkdir install-gcc
+        cd install-gcc
+        sudo apt-get update
+        # INSTALL GCC
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-8/gcc-8_8.4.0-3ubuntu2_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-8/gcc-8-base_8.4.0-3ubuntu2_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-8/libgcc-8-dev_8.4.0-3ubuntu2_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-8/cpp-8_8.4.0-3ubuntu2_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-8/libmpx2_8.4.0-3ubuntu2_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/main/i/isl/libisl22_0.22.1-1_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-8/lib32mpx2_8.4.0-3ubuntu2_amd64.deb
+        sudo apt-get install ./libisl22_0.22.1-1_amd64.deb ./libmpx2_8.4.0-3ubuntu2_amd64.deb ./cpp-8_8.4.0-3ubuntu2_amd64.deb ./libgcc-8-dev_8.4.0-3ubuntu2_amd64.deb ./gcc-8-base_8.4.0-3ubuntu2_amd64.deb ./gcc-8_8.4.0-3ubuntu2_amd64.deb ./lib32mpx2_8.4.0-3ubuntu2_amd64.deb
+        which gcc-8
+        # INSTALL G++
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-8/libstdc++-8-dev_8.4.0-3ubuntu2_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-8/g++-8_8.4.0-3ubuntu2_amd64.deb
+        sudo apt-get install ./libstdc++-8-dev_8.4.0-3ubuntu2_amd64.deb ./g++-8_8.4.0-3ubuntu2_amd64.deb
+        which g++-8
+        # INSTALL GCC MULTILIB
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-8/gcc-8-multilib_8.4.0-3ubuntu2_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-8/lib32gcc-8-dev_8.4.0-3ubuntu2_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-8/libx32gcc-8-dev_8.4.0-3ubuntu2_amd64.deb
+        sudo apt-get install ./gcc-8-multilib_8.4.0-3ubuntu2_amd64.deb ./lib32gcc-8-dev_8.4.0-3ubuntu2_amd64.deb ./libx32gcc-8-dev_8.4.0-3ubuntu2_amd64.deb
+        sudo ln -s /usr/include/asm-generic /usr/include/asm
+        # INSTALL G++ MULTILIB
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-8/g++-8-multilib_8.4.0-3ubuntu2_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-8/lib32stdc++-8-dev_8.4.0-3ubuntu2_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-8/libx32stdc++-8-dev_8.4.0-3ubuntu2_amd64.deb
+        sudo apt-get install ./g++-8-multilib_8.4.0-3ubuntu2_amd64.deb ./lib32stdc++-8-dev_8.4.0-3ubuntu2_amd64.deb ./libx32stdc++-8-dev_8.4.0-3ubuntu2_amd64.deb
+        sudo ln -fs `which gcc-8` /usr/local/bin/gcc
+        sudo ln -fs `which g++-8` /usr/local/bin/g++
+    - name: Test gcc version
+      run: |
+        gcc --version
+        g++ --version
+    - name: Compile simple program
+      run: |
+        echo 'int main() { return 0; }' > a.c
+        gcc -o a.out a.c
+        file a.out
+        ./a.out
+    - name: Compile simple C++ program
+      run: |
+        echo 'int main() { return 0; }' > a.cpp
+        g++ -o a.out a.cpp
+        file a.out
+        ./a.out
+    - name: Compile simple 32-bit program
+      run: |
+        echo 'int main() { return 0; }' > a.c
+        gcc -m32 -o a.out a.c
+        file a.out
+        ./a.out
+    - name: Compile simple 32-bit program with g++
+      run: |
+        echo 'int main() { return 0; }' > a.c
+        g++ -m32 -o a.out a.c
+        file a.out
+        ./a.out
+    - name: Compile zlib
+      run: |
+        curl -O https://zlib.net/fossils/zlib-1.2.8.tar.gz
+        tar xzf zlib-1.2.8.tar.gz
+        cd zlib-1.2.8
+        gcc --version
+        ./configure
+        make clean; make test
+        file minigzip
+    - name: Compile zlib, 32-bits
+      run: |
+        cd zlib-1.2.8
+        flags="-m32 -O3 -D_LARGEFILE64_SOURCE=1 -DHAVE_HIDDEN"
+        make clean; make test CFLAGS="$flags" SFLAGS="-fPIC $flags"
+        file minigzip
+
+  gcc-8-ppa:
+    if: false
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-20.04", "ubuntu-22.04"]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download GCC 8
+      run: |
+        sudo add-apt-repository --yes --update ppa:ubuntu-toolchain-r/test
+        sudo apt-get update
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends gcc-8-multilib g++-8-multilib
+        which gcc-8
+        which g++-8
+        sudo ln -fs `which gcc-8` /usr/local/bin/gcc
+        sudo ln -fs `which g++-8` /usr/local/bin/g++
+        sudo ln -s /usr/include/asm-generic /usr/include/asm
+    - name: Test gcc version
+      run: |
+        gcc --version
+        g++ --version
+    - name: Compile simple program
+      run: |
+        echo 'int main() { return 0; }' > a.c
+        gcc -o a.out a.c
+        file a.out
+        ./a.out
+    - name: Compile simple C++ program
+      run: |
+        echo 'int main() { return 0; }' > a.cpp
+        g++ -o a.out a.cpp
+        file a.out
+        ./a.out
+    - name: Compile simple 32-bit program
+      run: |
+        echo 'int main() { return 0; }' > a.c
+        gcc -m32 -o a.out a.c
+        file a.out
+        ./a.out
+    - name: Compile zlib
+      run: |
+        curl -O https://zlib.net/fossils/zlib-1.2.8.tar.gz
+        tar xzf zlib-1.2.8.tar.gz
+        cd zlib-1.2.8
+        gcc --version
+        ./configure
+        make clean; make test
+        file minigzip
+    - name: Compile zlib, 32-bits
+      run: |
+        cd zlib-1.2.8
+        flags="-m32 -O3 -D_LARGEFILE64_SOURCE=1 -DHAVE_HIDDEN"
+        make clean; make test CFLAGS="$flags" SFLAGS="-fPIC $flags"
+        file minigzip
+
   os-python:
     if: false
     runs-on: ${{ matrix.os }}
@@ -103,6 +247,7 @@ jobs:
         # curl --upload-file minigzip.o 'https://paste.c-net.org/'
 
   gcc-m32:
+    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -159,53 +304,56 @@ jobs:
         make clean; make test CFLAGS="$flags" SFLAGS="-fPIC $flags"
         file minigzip
 
-  gcc-4-4:
+  gcc-8-zzz:
     if: false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
-        exclude:
-          - {os: ubuntu-22.04}
-    env:
-      CC: gcc-4.4
     steps:
     - uses: actions/checkout@v4
-    - name: Download GCC 4.4
+    - name: Download GCC 8
       run: |
         sudo apt-get update
-        mkdir install_g++-4.4
-        cd install_g++-4.4/
-        wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/g++-4.4_4.4.7-8ubuntu1_amd64.deb
-        wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/libstdc++6-4.4-dev_4.4.7-8ubuntu1_amd64.deb
-        wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/gcc-4.4-base_4.4.7-8ubuntu1_amd64.deb
-        wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/gcc-4.4_4.4.7-8ubuntu1_amd64.deb
-        wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/cpp-4.4_4.4.7-8ubuntu1_amd64.deb
-        wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/g/gcc-4.4/gcc-4.4-multilib_4.4.7-8ubuntu1_amd64.deb
-        wget http://archive.ubuntu.com/ubuntu/pool/main/g/gcc-10/lib32gcc1_10.5.0-1ubuntu1~20.04_amd64.deb
-        wget https://mirrors.edge.kernel.org/ubuntu/pool/main/m/mpfr4/libmpfr4_3.1.2-1_amd64.deb
-        wget https://mirrors.edge.kernel.org/ubuntu/pool/main/g/glibc/multiarch-support_2.27-3ubuntu1.6_amd64.deb
-        sudo apt-get install ./g++-4.4_4.4.7-8ubuntu1_amd64.deb ./libstdc++6-4.4-dev_4.4.7-8ubuntu1_amd64.deb ./gcc-4.4-base_4.4.7-8ubuntu1_amd64.deb ./gcc-4.4_4.4.7-8ubuntu1_amd64.deb ./cpp-4.4_4.4.7-8ubuntu1_amd64.deb ./gcc-4.4-multilib_4.4.7-8ubuntu1_amd64.deb ./libmpfr4_3.1.2-1_amd64.deb ./multiarch-support_2.27-3ubuntu1.6_amd64.deb
+        mkdir install-gcc
+        cd install-gcc
+        wget https://old-releases.ubuntu.com/ubuntu/pool/universe/g/gcc-8/g++-8_8.4.0-7ubuntu3_amd64.deb
+        wget https://old-releases.ubuntu.com/ubuntu/pool/universe/g/gcc-8/libstdc++-8-dev_8.4.0-7ubuntu3_amd64.deb
+        wget https://old-releases.ubuntu.com/ubuntu/pool/universe/g/gcc-8/gcc-8-base_8.4.0-7ubuntu3_amd64.deb
+        wget https://old-releases.ubuntu.com/ubuntu/pool/universe/g/gcc-8/gcc-8_8.4.0-7ubuntu3_amd64.deb
+        wget https://old-releases.ubuntu.com/ubuntu/pool/universe/g/gcc-8/libgcc-8-dev_8.4.0-7ubuntu3_amd64.deb
+        wget https://old-releases.ubuntu.com/ubuntu/pool/universe/g/gcc-8/cpp-8_8.4.0-7ubuntu3_amd64.deb
+        wget http://archive.ubuntu.com/ubuntu/pool/main/g/glibc/libc6_2.35-0ubuntu3_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/main/g/gcc-8/libubsan1_8.4.0-1ubuntu1~18.04_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/main/g/gcc-8/libmpx2_8.4.0-1ubuntu1~18.04_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/main/i/isl/libisl22_0.22.1-1_amd64.deb
+        wget http://mirrors.kernel.org/ubuntu/pool/main/i/isl/libisl23_0.26-3_amd64.deb
+        lib32=""; if test ${{ matrix.platform }} = x86; then
+          true
+        fi
+        sudo apt-get install ./g++-8_8.4.0-7ubuntu3_amd64.deb ./libstdc++-8-dev_8.4.0-7ubuntu3_amd64.deb ./gcc-8-base_8.4.0-7ubuntu3_amd64.deb ./gcc-8_8.4.0-7ubuntu3_amd64.deb ./libgcc-8-dev_8.4.0-7ubuntu3_amd64.deb ./cpp-8_8.4.0-7ubuntu3_amd64.deb ./libc6_2.35-0ubuntu3_amd64.deb ./libubsan1_8.4.0-1ubuntu1~18.04_amd64.deb ./libmpx2_8.4.0-1ubuntu1~18.04_amd64.deb ./libisl22_0.22.1-1_amd64.deb ./libisl23_0.26-3_amd64.deb $lib32
+        sudo ln -fs `which gcc-8` /usr/local/bin/gcc
+        sudo ln -fs `which g++-8` /usr/local/bin/g++
     - name: Test gcc version
       run: |
-        $CC --version
+        gcc --version
     - name: Compile simple program
       run: |
         echo 'int main() { return 0; }' > a.c
-        $CC -o a.out a.c
+        gcc -o a.out a.c
         file a.out
         ./a.out
     - name: Compile simple C++ program
       run: |
         echo 'int main() { return 0; }' > a.cpp
-        g++-4.4 -o a.out a.cpp
+        g++ -o a.out a.cpp
         file a.out
         ./a.out
     - name: Compile simple 32-bit program
       run: |
         echo 'int main() { return 0; }' > a.c
-        $CC -m32 -o a.out a.c
+        gcc -m32 -o a.out a.c
         file a.out
         ./a.out
     - name: Compile zlib
@@ -223,52 +371,6 @@ jobs:
         flags="-m32 -O3 -D_LARGEFILE64_SOURCE=1 -DHAVE_HIDDEN"
         make clean; make test CFLAGS="$flags" SFLAGS="-fPIC $flags"
         file minigzip
-
-  gcc-4-6:
-    if: false
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-20.04", "ubuntu-22.04"]
-    env:
-      CC: gcc-4.6
-    steps:
-    - uses: actions/checkout@v4
-    - name: Download GCC 4.6
-      run: |
-        sudo apt-get update
-        mkdir install_g++-4.6
-        cd install_g++-4.6/
-        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-4.6/g++-4.6_4.6.4-6ubuntu2_amd64.deb
-        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-4.6/libstdc++6-4.6-dev_4.6.4-6ubuntu2_amd64.deb
-        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-4.6/gcc-4.6-base_4.6.4-6ubuntu2_amd64.deb
-        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-4.6/gcc-4.6_4.6.4-6ubuntu2_amd64.deb
-        wget http://mirrors.kernel.org/ubuntu/pool/universe/g/gcc-4.6/cpp-4.6_4.6.4-6ubuntu2_amd64.deb
-        wget https://mirrors.edge.kernel.org/ubuntu/pool/main/m/mpfr4/libmpfr4_3.1.2-1_amd64.deb
-        wget https://mirrors.edge.kernel.org/ubuntu/pool/main/g/glibc/multiarch-support_2.27-3ubuntu1.6_amd64.deb
-        sudo apt-get install ./g++-4.6_4.6.4-6ubuntu2_amd64.deb ./libstdc++6-4.6-dev_4.6.4-6ubuntu2_amd64.deb ./gcc-4.6-base_4.6.4-6ubuntu2_amd64.deb ./gcc-4.6_4.6.4-6ubuntu2_amd64.deb ./cpp-4.6_4.6.4-6ubuntu2_amd64.deb ./libmpfr4_3.1.2-1_amd64.deb ./multiarch-support_2.27-3ubuntu1.6_amd64.deb
-    - name: Test gcc version
-      run: |
-        $CC --version
-    - name: Compile simple program
-      run: |
-        echo 'int main() { return 0; }' > a.c
-        $CC -o a.out a.c
-        file a.out
-        ./a.out
-    - name: Compile simple C++ program
-      run: |
-        echo 'int main() { return 0; }' > a.cpp
-        g++-4.6 -o a.out a.cpp
-        file a.out
-        ./a.out
-    - name: Compile simple 32-bit program
-      run: |
-        echo 'int main() { return 0; }' > a.c
-        $CC -m32 -o a.out a.c
-        file a.out
-        ./a.out
 
   alpine:
     if: false
