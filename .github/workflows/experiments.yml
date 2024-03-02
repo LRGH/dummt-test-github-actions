@@ -7,6 +7,7 @@ on:
 jobs:
 
   gcc-8:
+    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -150,26 +151,32 @@ jobs:
         file minigzip
 
   os-python:
-    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: ["ubuntu-20.04", "ubuntu-latest", "macos-latest"]
-        python-version: ["3.10", "pypy2.7", "pypy3.9"]
+        python-version: ["3.10", "pypy2.7", "pypy3.9", "graalpy-22.3"]
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Test python version
       run: |
         python -c 'import sys;print(sys.version)'
         python --version
-    - name: Test dependencies ${{ matrix.python-version }} ${{ startsWith(matrix.python-version, 'pypy') }} ${{ matrix.os }} ${{ startsWith(matrix.os, 'macos') }} ${{ ! startsWith(matrix.os, 'macos') }} ${{ ! startsWith(matrix.python-version, 'pypy') || ! startsWith(matrix.os, 'macos') }} ${{ (! startsWith(matrix.python-version, 'pypy')) || (! startsWith(matrix.os, 'macos')) }}
-      # pypy on macosx is really too slow
-      if: ${{ ! startsWith(matrix.python-version, 'pypy') || ! startsWith(matrix.os, 'macos') }}
+    - name: Compute python major version
+      id: pyver
+      run: |
+        python -c 'import sys;print("pyver=%s"%sys.version_info[0])' >> "$GITHUB_OUTPUT"
+    - name: Only for python 2
+      if: ${{ steps.pyver.outputs.pyver == 2 }}
+      run: |
+        python -m pip install pytest pyparsing coverage codecov
+    - name: Only for python 3
+      if: ${{ steps.pyver.outputs.pyver == 3 }}
       run: |
         python -m pip install pytest pyparsing coverage codecov
 
