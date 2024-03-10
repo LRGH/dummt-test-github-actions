@@ -6,6 +6,40 @@ on:
 
 jobs:
 
+  binwalk:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "pypy2.7", "pypy3.9", "graalpy-22.3"]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Get and install binwalk
+      run: |
+        # pip install binwalk results in a non-working installation :-(
+        pip install pytest pytest-cov matplotlib
+        git clone https://github.com/OSPG/binwalk
+        cd binwalk
+        sudo python setup.py install
+    - name: Test binwalk
+      run: |
+        binwalk /bin/sh
+    - name: Get cpu_rec
+      run: |
+        git clone https://github.com/airbus-seclab/cpu_rec
+    - name: Install cpu_rec as a binwalk module
+      run: |
+        cd cpu_rec
+        mkdir -p $HOME/.config/binwalk/modules
+        mv cpu_rec.py cpu_rec_corpus $HOME/.config/binwalk/modules
+    - name: Test with cpu_rec module
+      run: |
+        binwalk -% /bin/sh
+
   lief:
     if: false
     runs-on: ${{ matrix.os }}
@@ -61,6 +95,7 @@ jobs:
         python -m pip install pytest pyparsing coverage codecov
 
   python23:
+    if: false
     runs-on: "ubuntu-latest"
     strategy:
       fail-fast: false
