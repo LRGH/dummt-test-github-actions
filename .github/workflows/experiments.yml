@@ -7,6 +7,7 @@ on:
 jobs:
 
   binwalk:
+    if: false
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -64,13 +65,12 @@ jobs:
         pip install lief
 
   os-python:
-    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: ["ubuntu-20.04", "ubuntu-latest", "macos-latest"]
-        python-version: ["3.10", "pypy2.7", "pypy3.9", "graalpy-22.3"]
+        python-version: ["3.10", "3.12", "3.13", "pypy2.7", "pypy3.9", "graalpy-22.3"]
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
