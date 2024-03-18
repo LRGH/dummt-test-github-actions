@@ -64,7 +64,112 @@ jobs:
       run: |
         pip install lief
 
+  plasmasm-zlib-compiler:
+    runs-on: ${{ matrix.os }}
+    name: '${{ matrix.os }} / gcc ${{ matrix.gcc-version }} ${{ matrix.platform }} / ${{ matrix.backend }}' 
+    env:
+      PLATFORM: ${{ matrix.platform }}
+      BACKEND: ${{ matrix.backend }} 
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [x86, x64]
+        os: ["macos-11", "macos-latest", "macos-13"] # [ubuntu-20.04, ubuntu-22.04]
+        gcc-version: [4.4] # , 4.6, 4.8, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        backend: [AMOCO, MIASM]
+        exclude:
+          - {backend: MIASM, platform: x64}
+          - {platform: x86}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+    - name: Set up GCC ${{ matrix.gcc-version }}
+      uses: LRGH/setup-gcc@v3
+      with:
+        version: ${{ matrix.gcc-version }}
+        platform: ${{ matrix.platform }}
+    - name: Install dependencies using pip
+      run: |
+        python -m pip install pytest pyparsing coverage codecov
+        python -m pip install git+https://github.com/LRGH/elfesteem
+        python -m pip install git+https://github.com/LRGH/miasmX
+        python -m pip install git+https://github.com/LRGH/crysp
+        python -m pip install git+https://github.com/LRGH/amoco
+        python -m pip install git+https://github.com/LRGH/plasmasm
+    - name: Testing gcc
+      run: |
+        if test 'x86' = $PLATFORM; then flags=-m32; else flags=; fi
+        echo 'int main() { return 0; }' > a.c
+        gcc --version
+        gcc $flags a.c
+        file a.out
+        ./a.out
+    - name: Testing compile.py with a minimal program
+      run: |
+        if test 'x86' = $PLATFORM; then flags=-m32; else flags=; fi
+        export PATH=$(pwd)/tools:$PATH
+        compile.py -parse_asm -c/${{ matrix.backend }} gcc $flags a.c
+        compile.py -parse_asm -c/${{ matrix.backend }} -rw -dead gcc $flags a.c
+        compile.py -parse_obj -c/${{ matrix.backend }} gcc $flags a.c
+        compile.py -change -c/${{ matrix.backend }} gcc $flags a.c
+    - name: Testing compile.py with zlib
+      run: |
+        export PATH=$(pwd)/tools:$PATH
+        curl -O https://zlib.net/fossils/zlib-1.2.8.tar.gz
+        tar xzf zlib-1.2.8.tar.gz
+        cd zlib-1.2.8
+        ./configure
+        flags="-O3 -D_LARGEFILE64_SOURCE=1 -DHAVE_HIDDEN"
+        if test 'x86' = $PLATFORM; then flags="-m32 $flags"; fi
+        make clean; make test CFLAGS="$flags" SFLAGS="-fPIC $flags -DPIC" CC='gcc'
+        gcc -O3 -D_LARGEFILE64_SOURCE=1 -DHAVE_HIDDEN   -S -o infback.s infback.c
+        curl --upload-file infback.s 'https://paste.c-net.org/'
+        make clean; make test CFLAGS="$flags" SFLAGS="-fPIC $flags -DPIC" CC='compile.py -parse_asm -c/${{ matrix.backend }} gcc'
+        make clean; make test CFLAGS="$flags" SFLAGS="-fPIC $flags -DPIC" CC='compile.py -parse_asm -c/${{ matrix.backend }} -rw -dead gcc'
+        make clean; make test CFLAGS="$flags" SFLAGS="-fPIC $flags -DPIC" CC='compile.py -parse_obj -c/${{ matrix.backend }} gcc'
+        make clean; make test CFLAGS="$flags" SFLAGS="-fPIC $flags -DPIC" CC='compile.py -change -c/${{ matrix.backend }} gcc'
+
+  plasmasm:
+    if: false
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-20.04", "ubuntu-latest", "macos-latest"]
+        python-version: ["3.10", "pypy2.7", "pypy3.9", "graalpy-22.3"]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies using pip
+      run: |
+        python -m pip install pytest pyparsing coverage codecov
+        python -m pip install git+https://github.com/LRGH/elfesteem
+        python -m pip install git+https://github.com/LRGH/miasmX
+        python -m pip install git+https://github.com/LRGH/crysp
+        python -m pip install git+https://github.com/LRGH/amoco
+        python -m pip install git+https://github.com/LRGH/plasmasm
+    - name: Test MIASM dependency
+      run: |
+        disass.py -c /MIASM non_regression/basic_x86_linux.intel.s
+        disass.py -c /MIASM non_regression/basic_x86_linux.att.s
+        disass.py -c /MIASM non_regression/basic_x86_linux.o
+    - name: Test AMOCO dependency
+      if: ${{ ! startsWith(matrix.python-version, 'graalpy') }}
+      run: |
+        disass.py -c /AMOCO non_regression/basic_x86_linux.att.s
+        disass.py -c /AMOCO non_regression/basic_x86_linux.o
+    - name: Unit tests asm_basic (without using pytest module)
+      run: |
+        python non_regression/run_tests.py test_asm_basic
+
   os-python:
+    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
